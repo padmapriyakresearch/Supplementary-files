@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[ ]:
+
+
+Data Preprocessing
+
+import numpy as np
+import cv2
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.model_selection import train_test_split
+
+def preprocess_images(images, labels):
+    resized_images = [cv2.resize(img, (512, 512)) for img in images]
+    labels_encoded = {'AD': 0, 'MCI': 1, 'CN': 2, 'EMCI': 3}
+    y = np.array([labels_encoded[label] for label in labels])
+
+    # Normalize images
+    images_arr = np.array(resized_images).astype('float32')
+    scaler = MinMaxScaler()
+    images_scaled = np.array([scaler.fit_transform(img) for img in images_arr])
+
+    return train_test_split(images_scaled, y, test_size=0.2, random_state=42)
+
+
+# In[ ]:
+
+
+Cross-SRGAN
+
+from tensorflow.keras.layers import Input, Conv2D, LeakyReLU, Add
+from tensorflow.keras.models import Model
+
+def build_cross_srgan_generator(input_shape=(512, 512, 1)):
+    input_layer = Input(shape=input_shape)
+    x = Conv2D(64, kernel_size=3, padding='same')(input_layer)
+    x = LeakyReLU()(x)
+    x = Conv2D(64, kernel_size=3, padding='same')(x)
+    output = Add()([input_layer, x])
+    return Model(inputs=input_layer, outputs=output)
+
+
+# In[ ]:
+
+
+Cross Distillation Loss
+
+def cross_distillation_loss(y_true, y_pred, alpha=0.5):
+    import tensorflow.keras.backend as K
+    ce_loss = K.categorical_crossentropy(y_true, y_pred)
+    distill_loss = K.mean(K.square(y_pred - y_true))
+    return alpha * ce_loss + (1 - alpha) * distill_loss
+
+
+# In[ ]:
+
+
+Hybrid Manifold Learning with Dynamic Weighting
+
+from sklearn.manifold import Isomap
+from sklearn.decomposition import PCA
+
+def hybrid_manifold_learning(X, method_weights=(0.5, 0.5)):
+    iso = Isomap(n_components=50)
+    pca = PCA(n_components=50)
+    X_iso = iso.fit_transform(X)
+    X_pca = pca.fit_transform(X)
+    return method_weights[0] * X_iso + method_weights[1] * X_pca
+
+
+# In[ ]:
+
+
+GNN-Based Classification
+
+import torch
+from torch_geometric.nn import GCNConv
+from torch_geometric.data import Data
+
+class SimpleGNN(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_classes):
+        super(SimpleGNN, self).__init__()
+        self.conv1 = GCNConv(input_dim, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, num_classes)
+
+    def forward(self, x, edge_index):
+        x = torch.relu(self.conv1(x, edge_index))
+        return self.conv2(x, edge_index)
+
+
+# In[ ]:
+
+
+Performance Metrics
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
+
+def evaluate(y_true, y_pred):
+    print("Accuracy:", accuracy_score(y_true, y_pred))
+    print("Precision:", precision_score(y_true, y_pred, average='weighted'))
+    print("Recall:", recall_score(y_true, y_pred, average='weighted'))
+    print("Confusion Matrix:\n", confusion_matrix(y_true, y_pred))
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
